@@ -85,29 +85,46 @@
         }
         .table-container {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 800px; /* Ensure table has minimum width on mobile */
         }
         th, td {
-            padding: 12px 8px;
+            padding: 8px 4px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
+            font-size: 0.75rem;
+        }
+        @media (min-width: 640px) {
+            th, td {
+                padding: 12px 8px;
+                font-size: 0.875rem;
+            }
         }
         th {
             background: #f9fafb;
             font-weight: 600;
-            font-size: 0.875rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         .btn {
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             font-weight: 500;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
+        }
+        @media (min-width: 640px) {
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.875rem;
+            }
         }
         .btn-primary {
             background: #dc2626;
@@ -310,18 +327,20 @@
     <header class="bg-white border-b">
         <div class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <img src="logo.png" alt="Logo" class="h-16 w-28">
-                    <h1 class="text-2xl font-semibold text-gray-800">Databáze výměníků</h1>
-                    <span class="text-sm text-gray-500 bg-red-50 px-3 py-1 rounded-full">Firebase</span>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <img src="logo.png" alt="Logo" class="h-8 w-10 sm:h-16 sm:w-28">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                        <h1 class="text-lg sm:text-2xl font-semibold text-gray-800">Databáze výměníků</h1>
+                        <span class="text-xs sm:text-sm text-gray-500 bg-red-50 px-2 py-1 sm:px-3 rounded-full">Firebase</span>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="flex items-center gap-1 text-sm rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700" onclick="toggleTheme()" title="Přepnout mezi světlým a tmavým režimem">
-                        <i id="theme-icon" data-lucide="sun" class="icon"></i>
+                <div class="flex items-center gap-1 sm:gap-2">
+                    <button id="theme-toggle" class="flex items-center gap-1 text-xs sm:text-sm rounded-md p-1 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700" onclick="toggleTheme()" title="Přepnout mezi světlým a tmavým režimem">
+                        <i id="theme-icon" data-lucide="sun" class="icon w-4 h-4 sm:w-4 sm:h-4"></i>
                     </button>
-                    <div id="connection-status" class="flex items-center gap-1 text-sm">
-                        <i data-lucide="wifi" class="icon text-green-500"></i>
-                        <span class="text-green-600">Online</span>
+                    <div id="connection-status" class="flex items-center gap-1 text-xs sm:text-sm">
+                        <i data-lucide="wifi" class="icon text-green-500 w-4 h-4 sm:w-4 sm:h-4"></i>
+                        <span class="text-green-600 hidden sm:inline">Online</span>
                     </div>
                 </div>
             </div>
@@ -343,21 +362,21 @@
         </div>
 
         <!-- Companies Tab -->
-        <div id="companies-tab" class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-semibold">Seznam firem</h2>
-                <div class="flex gap-2">
+        <div id="companies-tab" class="bg-white shadow rounded-lg p-3 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
+                <h2 class="text-lg sm:text-xl font-semibold">Seznam firem</h2>
+                <div class="flex flex-col sm:flex-row gap-2">
                     <div class="relative">
                         <i data-lucide="search" class="icon absolute left-2 top-2.5 text-gray-400"></i>
                         <input 
                             type="text" 
                             id="company-search" 
                             placeholder="Hledat firmu..." 
-                            class="input pl-8 w-64"
+                            class="input pl-8 w-full sm:w-64"
                             onkeyup="searchCompanies()"
                         >
                     </div>
-                    <button class="btn btn-primary" onclick="openCompanyModal()">
+                    <button class="btn btn-primary whitespace-nowrap" onclick="openCompanyModal()">
                         <i data-lucide="plus" class="icon inline mr-1"></i>
                         Přidat firmu
                     </button>
@@ -399,28 +418,30 @@
         </div>
 
         <!-- Exchangers Tab -->
-        <div id="exchangers-tab" class="bg-white shadow rounded-lg p-6 hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-semibold">Seznam výměníků</h2>
-                <div class="flex gap-2">
+        <div id="exchangers-tab" class="bg-white shadow rounded-lg p-3 sm:p-6 hidden">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
+                <h2 class="text-lg sm:text-xl font-semibold">Seznam výměníků</h2>
+                <div class="flex flex-col sm:flex-row gap-2">
                     <div class="relative">
                         <i data-lucide="search" class="icon absolute left-2 top-2.5 text-gray-400"></i>
                         <input 
                             type="text" 
                             id="exchanger-search" 
                             placeholder="Hledat výměník..." 
-                            class="input pl-8 w-64"
+                            class="input pl-8 w-full sm:w-64"
                             onkeyup="searchExchangers()"
                         >
                     </div>
-                    <button class="btn btn-outline" onclick="resetExchangerFilter()" title="Zobrazit všechny výměníky">
-                        <i data-lucide="x" class="icon inline mr-1"></i>
-                        Reset filtru
-                    </button>
-                    <button class="btn btn-primary" onclick="openExchangerModal()">
-                        <i data-lucide="plus" class="icon inline mr-1"></i>
-                        Přidat výměník
-                    </button>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline whitespace-nowrap" onclick="resetExchangerFilter()" title="Zobrazit všechny výměníky">
+                            <i data-lucide="x" class="icon inline mr-1"></i>
+                            Reset filtru
+                        </button>
+                        <button class="btn btn-primary whitespace-nowrap" onclick="openExchangerModal()">
+                            <i data-lucide="plus" class="icon inline mr-1"></i>
+                            Přidat výměník
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -465,12 +486,12 @@
 
     <!-- Company Modal -->
     <div id="company-modal" class="modal">
-        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b">
-                <h3 id="company-modal-title" class="text-lg font-semibold">Přidat novou firmu</h3>
+        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-4 sm:p-6 border-b">
+                <h3 id="company-modal-title" class="text-base sm:text-lg font-semibold">Přidat novou firmu</h3>
             </div>
-            <form id="company-form" class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form id="company-form" class="p-4 sm:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div class="space-y-4">
                         <h4 class="font-medium text-sm text-gray-500">Informace o firmě</h4>
                         
@@ -566,12 +587,12 @@
 
     <!-- Exchanger Modal -->
     <div id="exchanger-modal" class="modal">
-        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b">
-                <h3 id="exchanger-modal-title" class="text-lg font-semibold">Přidat nový výměník</h3>
+        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-4 sm:p-6 border-b">
+                <h3 id="exchanger-modal-title" class="text-base sm:text-lg font-semibold">Přidat nový výměník</h3>
             </div>
-            <form id="exchanger-form" class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form id="exchanger-form" class="p-4 sm:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div class="space-y-4">
                         <h4 class="font-medium text-sm text-gray-500">Informace o zákazníkovi</h4>
                         
