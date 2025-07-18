@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Databáze výměníků - Firebase</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="faviconapple.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+        
+        // Firebase konfigurace
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRJZ9dHddT634Ddq40uPQYCDt1JzHWz-U",
+            authDomain: "databaze-edbf4.firebaseapp.com",
+            databaseURL: "https://databaze-edbf4-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "databaze-edbf4",
+            storageBucket: "databaze-edbf4.firebasestorage.app",
+            messagingSenderId: "1058842933076",
+            appId: "1:1058842933076:web:6801a7f0f1734119813ac1",
+            measurementId: "G-ZT9CTTD381"
+        };
+        
+        // Inicializace Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Globální proměnné
+        window.db = db;
+        window.firestore = { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy };
+        
+        console.log('✅ Firebase byl úspěšně inicializován!');
+        console.log('📊 Project ID:', firebaseConfig.projectId);
+    </script>
+    
+    <style>
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            background: white;
+            border: 1px solid #e5e7eb;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+        .toast.info {
+            border-left: 4px solid #dc2626;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #b91c1c;
+        }
+        .btn-outline {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-outline:hover {
+            background: #f9fafb;
+        }
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+        }
+        .input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+        .input:focus {
+            outline: none;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        .select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.875rem;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .status-existing { background: #dcfce7; color: #166534; }
+        .status-installed { background: #fecaca; color: #991b1b; }
+        .status-potential { background: #fef3c7; color: #92400e; }
+        .status-rejected { background: #fecaca; color: #991b1b; }
+        .status-cleaning { background: #f3f4f6; color: #374151; }
+        .icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+        }
+        .tabs {
+            display: flex;
+            background: #f3f4f6;
+            border-radius: 6px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 16px;
+            text-align: center;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+        }
+        .loading.show {
+            display: block;
+        }
+        .sync-indicator {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #dc2626;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            z-index: 1000;
+            display: none;
+        }
+        .sync-indicator.show {
+            display: block;
+        }
+        
+        /* Dark mode styles */
+        .dark {
+            color-scheme: dark;
+        }
+        .dark body {
+            background-color: #111827;
+            color: #f9fafb;
+        }
+        .dark header {
+            background-color: #1f2937;
+            border-color: #374151;
+        }
+        .dark .bg-white {
+            background-color: #1f2937;
+        }
+        .dark .text-gray-800 {
+            color: #f9fafb;
+        }
+        .dark .text-gray-500 {
+            color: #9ca3af;
+        }
+        .dark .bg-red-50 {
+            background-color: #7f1d1d;
+            color: #fecaca;
+        }
+        .dark .border {
+            border-color: #374151;
+        }
+        .dark .border-b {
+            border-color: #374151;
+        }
+        .dark th {
+            background-color: #374151;
+            color: #f9fafb;
+        }
+        .dark td {
+            border-color: #374151;
+        }
+        .dark .input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+        .dark .input::placeholder {
+            color: #9ca3af;
+        }
+        .dark .select {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+        .dark .modal {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .dark .toast {
+            background-color: #1f2937;
+            border-color: #374151;
+            color: #f9fafb;
+        }
+        .dark .tabs {
+            background-color: #374151;
+        }
+        .dark .tab {
+            color: #9ca3af;
+        }
+        .dark .tab.active {
+            background-color: #1f2937;
+            color: #f9fafb;
+        }
+        .dark .loading {
+            background-color: #1f2937;
+            color: #f9fafb;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Loading indicator -->
+    <div id="loading" class="loading">
+        <div class="flex items-center gap-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+            <span>Načítání dat z Firebase...</span>
+        </div>
+    </div>
+    
+    <!-- Sync indicator -->
+    <div id="sync-indicator" class="sync-indicator">
+        <div class="flex items-center gap-2">
+            <i data-lucide="cloud-upload" class="icon"></i>
+            <span>Synchronizováno s Firebase</span>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white border-b">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img src="logo.png" alt="Logo" class="h-16 w-28">
+                    <h1 class="text-2xl font-semibold text-gray-800">Databáze výměníků</h1>
+                    <span class="text-sm text-gray-500 bg-red-50 px-3 py-1 rounded-full">Firebase</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle" class="flex items-center gap-1 text-sm rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700" onclick="toggleTheme()" title="Přepnout mezi světlým a tmavým režimem">
+                        <i id="theme-icon" data-lucide="sun" class="icon"></i>
+                    </button>
+                    <div id="connection-status" class="flex items-center gap-1 text-sm">
+                        <i data-lucide="wifi" class="icon text-green-500"></i>
+                        <span class="text-green-600">Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- Tabs -->
+        <div class="tabs max-w-md">
+            <div class="tab active" onclick="showTab('companies')">
+                <i data-lucide="building" class="icon inline mr-2"></i>
+                Firmy
+            </div>
+            <div class="tab" onclick="showTab('exchangers')">
+                <i data-lucide="database" class="icon inline mr-2"></i>
+                Výměníky
+            </div>
+        </div>
+
+        <!-- Companies Tab -->
+        <div id="companies-tab" class="bg-white shadow rounded-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Seznam firem</h2>
+                <div class="flex gap-2">
+                    <div class="relative">
+                        <i data-lucide="search" class="icon absolute left-2 top-2.5 text-gray-400"></i>
+                        <input 
+                            type="text" 
+                            id="company-search" 
+                            placeholder="Hledat firmu..." 
+                            class="input pl-8 w-64"
+                            onkeyup="searchCompanies()"
+                        >
+                    </div>
+                    <button class="btn btn-primary" onclick="openCompanyModal()">
+                        <i data-lucide="plus" class="icon inline mr-1"></i>
+                        Přidat firmu
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container border rounded-md overflow-hidden">
+                <table id="companies-table">
+                    <thead>
+                        <tr>
+                            <th class="w-16">Číslo</th>
+                            <th colspan="7">Firma</th>
+                            <th colspan="4">Kontakt</th>
+                            <th>Stav</th>
+                            <th class="w-20">Akce</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th>Odvětví</th>
+                            <th>Název firmy</th>
+                            <th>Město</th>
+                            <th>Ulice</th>
+                            <th>PSČ</th>
+                            <th>IČO</th>
+                            <th>GPS</th>
+                            <th>Kontaktní osoba</th>
+                            <th>Pozice</th>
+                            <th>Telefon</th>
+                            <th>E-mail</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="companies-tbody">
+                        <!-- Companies will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Exchangers Tab -->
+        <div id="exchangers-tab" class="bg-white shadow rounded-lg p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Seznam výměníků</h2>
+                <div class="flex gap-2">
+                    <div class="relative">
+                        <i data-lucide="search" class="icon absolute left-2 top-2.5 text-gray-400"></i>
+                        <input 
+                            type="text" 
+                            id="exchanger-search" 
+                            placeholder="Hledat výměník..." 
+                            class="input pl-8 w-64"
+                            onkeyup="searchExchangers()"
+                        >
+                    </div>
+                    <button class="btn btn-outline" onclick="resetExchangerFilter()" title="Zobrazit všechny výměníky">
+                        <i data-lucide="x" class="icon inline mr-1"></i>
+                        Reset filtru
+                    </button>
+                    <button class="btn btn-primary" onclick="openExchangerModal()">
+                        <i data-lucide="plus" class="icon inline mr-1"></i>
+                        Přidat výměník
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container border rounded-md overflow-hidden">
+                <table id="exchangers-table">
+                    <thead>
+                        <tr>
+                            <th class="w-16">Číslo</th>
+                            <th colspan="2">Zákazník</th>
+                            <th colspan="7">Výměník</th>
+                            <th colspan="3">Poloha</th>
+                            <th colspan="3">Kontrola</th>
+                            <th class="w-20">Akce</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th>Číslo zákazníka</th>
+                            <th>Název firmy</th>
+                            <th>Výrobce</th>
+                            <th>Typ výměníku</th>
+                            <th>Počet desek</th>
+                            <th>Výrobní číslo</th>
+                            <th>Registrační číslo</th>
+                            <th>Datum výroby</th>
+                            <th>Teplonosná látka</th>
+                            <th>Město</th>
+                            <th>Ulice</th>
+                            <th>Upřesnění</th>
+                            <th>Interval kontroly</th>
+                            <th>Poslední kontrola</th>
+                            <th>Plánovaná kontrola</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="exchangers-tbody">
+                        <!-- Exchangers will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Modal -->
+    <div id="company-modal" class="modal">
+        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b">
+                <h3 id="company-modal-title" class="text-lg font-semibold">Přidat novou firmu</h3>
+            </div>
+            <form id="company-form" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-sm text-gray-500">Informace o firmě</h4>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Odvětví</label>
+                            <input type="text" name="industry" class="input w-full" placeholder="např. Strojírenství" required>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Název firmy</label>
+                            <input type="text" name="name" class="input w-full" placeholder="Název společnosti" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Město</label>
+                            <input type="text" name="city" class="input w-full" placeholder="Město" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Ulice</label>
+                            <input type="text" name="street" class="input w-full" placeholder="Ulice a číslo popisné" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">PSČ</label>
+                            <input type="text" name="postalCode" class="input w-full" placeholder="PSČ" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">IČO</label>
+                            <div class="flex gap-2">
+                                <input type="text" name="ico" class="input flex-1" placeholder="IČO" required>
+                                <button type="button" class="btn btn-outline" onclick="fetchAresData()">
+                                    Doplnit z ARES
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">GPS souřadnice</label>
+                            <input type="text" name="gpsCoordinates" class="input w-full" placeholder="např. 50.0755, 14.4378">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-sm text-gray-500">Kontaktní informace</h4>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Kontaktní osoba</label>
+                            <input type="text" name="contactPerson" class="input w-full" placeholder="Jméno a příjmení" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Pozice</label>
+                            <input type="text" name="position" class="input w-full" placeholder="Pracovní pozice">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Telefon</label>
+                            <input type="tel" name="phone" class="input w-full" placeholder="Telefonní číslo" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">E-mail</label>
+                            <input type="email" name="email" class="input w-full" placeholder="E-mailová adresa" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Stav</label>
+                            <select name="status" class="select w-full" required>
+                                <option value="">Vyberte stav</option>
+                                <option value="stávající zákazník">Stávající zákazník</option>
+                                <option value="umístěný výměník">Umístěný výměník</option>
+                                <option value="potenciální zákazník">Potenciální zákazník</option>
+                                <option value="odmítnutí">Odmítnutí</option>
+                                <option value="jednorázové čištění">Jednorázové čištění</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" class="btn btn-outline" onclick="closeCompanyModal()">
+                        Zrušit
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="company-submit-text">Přidat firmu</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exchanger Modal -->
+    <div id="exchanger-modal" class="modal">
+        <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b">
+                <h3 id="exchanger-modal-title" class="text-lg font-semibold">Přidat nový výměník</h3>
+            </div>
+            <form id="exchanger-form" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-sm text-gray-500">Informace o zákazníkovi</h4>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Zákazník</label>
+                            <select name="companyId" class="select w-full" required onchange="onCompanySelect()">
+                                <option value="">Vyberte zákazníka</option>
+                            </select>
+                        </div>
+
+                        <h4 class="font-medium text-sm text-gray-500 mt-6">Informace o výměníku</h4>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Výrobce</label>
+                            <input type="text" name="manufacturer" class="input w-full" placeholder="Výrobce výměníku" required>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Typ výměníku</label>
+                            <input type="text" name="type" class="input w-full" placeholder="Model nebo typ" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Počet desek</label>
+                            <input type="number" name="plateCount" class="input w-full" placeholder="Počet desek" min="0" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Výrobní číslo</label>
+                            <input type="text" name="serialNumber" class="input w-full" placeholder="Výrobní číslo" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Registrační číslo</label>
+                            <input type="text" name="registrationNumber" class="input w-full" placeholder="Registrační číslo">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Datum výroby</label>
+                            <input type="date" name="manufacturingDate" class="input w-full">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Teplonosná látka</label>
+                            <input type="text" name="heatingMedium" class="input w-full" placeholder="např. Voda/Pára" required>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-sm text-gray-500">Umístění výměníku</h4>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Město</label>
+                            <input type="text" name="city" class="input w-full" placeholder="Město" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Ulice</label>
+                            <input type="text" name="street" class="input w-full" placeholder="Ulice a číslo popisné" required>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Upřesnění polohy</label>
+                            <input type="text" name="location" class="input w-full" placeholder="např. Strojovna, 2. patro">
+                        </div>
+
+                        <h4 class="font-medium text-sm text-gray-500 mt-6">Kontroly</h4>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Interval kontrol (měsíce)</label>
+                            <input type="number" name="inspectionInterval" class="input w-full" min="1" max="60" value="12" required onchange="calculateNextInspection()">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Datum poslední kontroly</label>
+                            <input type="date" name="lastInspectionDate" class="input w-full" onchange="calculateNextInspection()">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium">Datum plánované kontroly</label>
+                            <input type="date" name="nextInspectionDate" class="input w-full" readonly>
+                            <p class="text-xs text-gray-500">
+                                Automaticky vypočteno z data poslední kontroly a intervalu
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" class="btn btn-outline" onclick="closeExchangerModal()">
+                        Zrušit
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="exchanger-submit-text">Přidat výměník</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (html.classList.contains('dark')) {
+                // Switch to light mode
+                html.classList.remove('dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+                localStorage.setItem('theme', 'light');
+            } else {
+                // Switch to dark mode
+                html.classList.add('dark');
+                themeIcon.setAttribute('data-lucide', 'moon');
+                localStorage.setItem('theme', 'dark');
+            }
+            
+            // Reinitialize icons
+            lucide.createIcons();
+        }
+        
+        // Initialize theme on page load
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+                themeIcon.setAttribute('data-lucide', 'moon');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+            }
+            
+            // Reinitialize icons
+            lucide.createIcons();
+        }
+        
+        // Initialize theme when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeTheme);
+    </script>
+
+    <script src="firebase-app.js"></script>
+</body>
+</html>
